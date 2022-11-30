@@ -9,7 +9,6 @@ def hl7_str_to_dict(s, use_long_name=True):
     m = parse_message(s)
     return hl7_message_to_dict(m, use_long_name=use_long_name)
 
-
 def hl7_message_to_dict(m, use_long_name=True):
     if m.children:
         d = {}
@@ -29,39 +28,58 @@ def hl7_message_to_dict(m, use_long_name=True):
         return m.to_er7()
 
 
-input_files: str = input("Enter location for input HL7 files (including wildcard; ex: /data/dir/*/*.hl7): ")
-output_file: str = input("Enter location for output json (ex: /output/dir/converted_files.json: ")
-log_file: str = input("Enter location for log file (ex: /log/dir/log.txt): ")
+input_files = "./seghs/*.hl7"
+output_file_name = "./output/output.json"
+log_file = "./logs/log.txt"
 
 success_count = 0
 error_count = 0
+message_count = 0
 
 log = open(log_file, 'a')
 log.write("Beginning processing files in " + input_files + '\n')
 
+#for each file
 for file in glob.glob(input_files):
     with open(os.path.join(os.getcwd(), file), 'rb') as f:
-        print("Processing " + file + " ...")
-        data = f.read().decode(errors='replace')
-        file1 = open(output_file, "a")
-        print("Translating " + file + " to dict...")
-        try:
-            line = hl7_str_to_dict(data)
-            print("Successfully translated " + file + " to dict")
-        except:
-            log.write(file + ",error" + '\n')
-            print("Failed to convert " + file + " to dict. Message file may be invalid HL7.")
-            error_count += 1
-            pass
-        line = json.dumps(line)
-        file1.write(line)
-        file1.write('\n')
-        print("Successfully written " + file)
-        success_count += 1
-        file1.close()
 
+        #read first line
+        data = f.readline().decode(errors='replace')
+        message_count += 1
+
+        while data:
+            file1 = open(output_file_name, "a")
+
+            print("Translating " + str(message_count) + " to dict...")
+            
+            try:
+                line = hl7_str_to_dict(data)
+                print("Successfully translated " + str(message_count) + " to dict")
+            
+            except:
+                log.write(str(message_count) + ",error" + '\n')
+                print("Failed to convert " + file + " to dict. Message file may be invalid HL7.")
+                error_count += 1
+                data = f.readline().decode(errors='replace')
+                message_count += 1
+                pass
+
+            #write to file
+            file1.write(json.dumps(line))
+            file1.write('\n')
+
+            print("Successfully written " + str(message_count))
+            
+            #iter
+            success_count += 1
+
+            #close output file
+            file1.close()
+
+            data = f.readline().decode(errors='replace')
+            message_count += 1
+            
 log.write("Total successful: " + str(success_count) + '\n')
 log.write("Total errors: " + str(error_count) + '\n')
 log.close()
-
 
