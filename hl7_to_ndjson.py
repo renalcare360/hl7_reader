@@ -1,8 +1,8 @@
 import os
 import glob
-import json
 from hl7apy.parser import parse_message
-
+import pg_server
+from psycopg2.extras import Json
 
 def hl7_str_to_dict(s, use_long_name=True):
     s = s.replace("\n", "\r")
@@ -27,9 +27,10 @@ def hl7_message_to_dict(m, use_long_name=True):
     else:
         return m.to_er7()
 
+conn = pg_server.connect('dev')
+cur = conn.cursor()
 
-input_files = "./seghs/*.hl7"
-output_file_name = "./output/output.json"
+input_files = "/Users/sudeepghantasala/Documents/data/seghs/*.hl7"
 log_file = "./logs/log.txt"
 
 success_count = 0
@@ -48,8 +49,6 @@ for file in glob.glob(input_files):
         message_count += 1
 
         while data:
-            file1 = open(output_file_name, "a")
-
             print("Translating " + str(message_count) + " to dict...")
             
             try:
@@ -64,21 +63,23 @@ for file in glob.glob(input_files):
                 message_count += 1
                 pass
 
-            #write to file
-            file1.write(json.dumps(line))
-            file1.write('\n')
+            #write to table
+            cur.execute(
+                        f'''
+                        INSERT INTO raw.seghs (message_id ,document)
+                        VALUES({str(message_count)}, {Json(line)})
+                        ''')
 
+            conn.commit()
             print("Successfully written " + str(message_count))
             
-            #iter
+            #iterate success
             success_count += 1
 
-            #close output file
-            file1.close()
-
+            #go to next line
             data = f.readline().decode(errors='replace')
             message_count += 1
-            
+                        
 log.write("Total successful: " + str(success_count) + '\n')
 log.write("Total errors: " + str(error_count) + '\n')
 log.close()

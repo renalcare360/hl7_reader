@@ -1,0 +1,7 @@
+hl7_read
+__pycache__
+logs
+output
+seghs
+*.json
+.DS_Store
